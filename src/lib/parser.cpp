@@ -8,6 +8,7 @@
 #include <boost/spirit/include/phoenix_fusion.hpp>
 #include <boost/spirit/include/phoenix_stl.hpp>
 #include <boost/spirit/include/phoenix_object.hpp>
+#include <boost/spirit/repository/include/qi_distinct.hpp>
 #include <boost/fusion/include/std_pair.hpp>
 #include <boost/fusion/include/adapt_struct.hpp>
 #include <boost/variant/recursive_variant.hpp>
@@ -23,8 +24,10 @@ namespace qi = boost::spirit::qi;
 namespace ascii = boost::spirit::ascii;
 namespace phoenix = boost::phoenix;
 namespace fusion = boost::fusion;
+namespace repo = boost::spirit::repository;
 
 
+// Old Marklar rules
 BOOST_FUSION_ADAPT_STRUCT(
 	parser::operation,
 	(std::string, op)
@@ -96,35 +99,95 @@ BOOST_FUSION_ADAPT_STRUCT(
 
 namespace parser {
 
+	qi::char_type char_;
+
+	struct _reserved_symbols : qi::symbols<char, unsigned int>
+	{
+		_reserved_symbols()
+		{
+			/*
+			reservedid %=
+				  qi::string("case") | "class" | "data" | "default" | "deriving" | "do" | "else"
+				| "foreign" | "if" | "import" | "in" | "infix" | "infixl"
+				| "infixr" | "instance" | "let" | "module" | "newtype" | "of"
+				| "then" | "type" | "where" | "_"
+			*/
+			
+			add
+			("_",    1)
+			("case", 2)
+			;
+		}
+	} reserved_symbols;
+
 	// Skip parser used from: http://www.boost.org/doc/libs/1_56_0/libs/spirit/example/qi/compiler_tutorial/mini_c/skipper.hpp
 	template <typename Iterator>
     struct skipper : qi::grammar<Iterator>
     {
         skipper() : skipper::base_type(start)
         {
-            qi::char_type char_;
-            ascii::space_type space;
-
             start =
-                    space                               // tab/space/cr/lf
-                |   "/*" >> *(char_ - "*/") >> "*/"     // C-style comments
+                   qi::blank
+				|  ncomment
+				|  comment
                 ;
+
+			comment =
+				   qi::lit("--")
+				>> *(char_ - (qi::eol || qi::eoi))
+				>> (qi::eol || qi::eoi);
+
+			ncomment =
+				   qi::lit("{-")
+				>> *(char_ - (qi::lit("-}") || "{-"))
+				>> -(ncomment)
+				>> "-}"
+				;
+
+			#if 0
+			// Debugging
+			BOOST_SPIRIT_DEBUG_NODE(start);
+			BOOST_SPIRIT_DEBUG_NODE(ncomment);
+			#endif
         }
 
         qi::rule<Iterator> start;
+        qi::rule<Iterator> ncomment;
+        qi::rule<Iterator> comment;
     };
 
 	template <typename Iterator>
-	struct marklar_grammar : qi::grammar<Iterator, base_expr_node(), skipper<Iterator>>
+	struct mhc_grammar : qi::grammar<Iterator, base_expr_node(), skipper<Iterator>>
 	{
-		marklar_grammar() : marklar_grammar::base_type(start)
+		mhc_grammar() : mhc_grammar::base_type(start)
 		{
 			start %= rootNode;
 
-			rootNode %= qi::eps >> +funcExpr >> qi::eoi;
+			rootNode %=
+				   qi::eps
+				//>> *reservedid
+				>> *varid
+				>> qi::eoi;
+
+			varid %=
+				   (!reservedid)
+				>> (qi::char_("a-z_") >> *qi::char_("a-z_A-Z0-9'"));
+
+			reservedid %=
+				   reserved_symbols
+				>> !(char_("a-zA-Z0-9'_"));
+
+			/*
+			reservedid %=
+				  qi::string("case") | "class" | "data" | "default" | "deriving" | "do" | "else"
+				| "foreign" | "if" | "import" | "in" | "infix" | "infixl"
+				| "infixr" | "instance" | "let" | "module" | "newtype" | "of"
+				| "then" | "type" | "where" | "_"
+				;
+			*/
 
 			funcExpr %=
-				  "marklar"
+				  "mhc"
 				>> varName
 				>> '(' >> *(varDef % ',') >> ')'
 				>> '{'
@@ -135,7 +198,7 @@ namespace parser {
 				;
 
 			varDef %=
-				  "marklar"
+				  "mhc"
 				>> varName
 				;
 
@@ -217,6 +280,8 @@ namespace parser {
 
 			// Debugging
 			/*
+			BOOST_SPIRIT_DEBUG_NODE(varid);
+			BOOST_SPIRIT_DEBUG_NODE(reservedid);
 			BOOST_SPIRIT_DEBUG_NODE(funcExpr);
 			BOOST_SPIRIT_DEBUG_NODE(varDecl);
 			BOOST_SPIRIT_DEBUG_NODE(baseExpr);
@@ -232,9 +297,13 @@ namespace parser {
 			*/
 		}
 
-		qi::rule<Iterator, base_expr_node(), skipper<Iterator>> start;
-		qi::rule<Iterator, base_expr(), skipper<Iterator>> rootNode;
+		qi::rule<Iterator, base_expr_node(),	skipper<Iterator>> start;
+		qi::rule<Iterator, base_expr(),			skipper<Iterator>> rootNode;
+		qi::rule<Iterator, string(),			skipper<Iterator>> varid;
+		qi::rule<Iterator, string(),			skipper<Iterator>> reservedid;
 
+
+		// Old Marklar eventually delete these
 		qi::rule<Iterator, func_expr(), skipper<Iterator>> funcExpr;
 		qi::rule<Iterator, decl_expr(), skipper<Iterator>> varDecl;
 		qi::rule<Iterator, string(), skipper<Iterator>> varDef;
@@ -256,10 +325,10 @@ namespace parser {
 
 }
 
-namespace marklar {
+namespace mhc {
 
 	bool parse(const std::string& str, parser::base_expr_node& root) {
-		parser::marklar_grammar<std::string::const_iterator> p;
+		parser::mhc_grammar<std::string::const_iterator> p;
 		parser::skipper<std::string::const_iterator> s;
 		const bool r = qi::phrase_parse(str.begin(), str.end(), p, s, root);
 

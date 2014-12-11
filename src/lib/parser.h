@@ -92,7 +92,7 @@ namespace parser {
 }
 
 
-namespace marklar {
+namespace mhc {
 
 	bool parse(const std::string& str);
 

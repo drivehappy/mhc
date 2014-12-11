@@ -12,9 +12,10 @@
 #include <driver.h>
 
 
-using namespace marklar;
+using namespace mhc;
 using namespace std;
 
+#if 0
 // Unit test helpers
 namespace {
 
@@ -587,4 +588,4 @@ TEST(DriverTest, MultipleChainedFunctionCall) {
 
 	EXPECT_EQ(27, runExecutable(g_outputExe));
 }
-
+#endif

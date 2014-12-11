@@ -11,7 +11,7 @@
 #include "parser.h"
 
 
-namespace marklar {
+namespace mhc {
 
 	class ast_codegen : public boost::static_visitor<llvm::Value*> {
 	public:

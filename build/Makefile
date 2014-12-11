@@ -1,4 +1,5 @@
 CXX				:= g++
+#CXX				:= /home/mharmer/dev/afl-0.87b/afl-g++
 #CXX				:= clang
 #CC_FLAGS 		:= -Wall -Werror -O0 -g -std=c++11 -D__STDC_CONSTANT_MACROS -D__STDC_LIMIT_MACROS -I../src/ -I../src/lib/ -I/usr/include/llvm-3.5/ -I/usr/include/llvm-c-3.5/ -L/usr/lib/x86_64-linux-gnu -L/usr/lib/llvm-3.5/lib 
 CC_FLAGS 		:= -Wall -Werror -O2 -std=c++11 -D__STDC_CONSTANT_MACROS -D__STDC_LIMIT_MACROS -I../src/ -I../src/lib/ -I/usr/include/llvm-3.5/ -I/usr/include/llvm-c-3.5/ -L/usr/lib/x86_64-linux-gnu -L/usr/lib/llvm-3.5/lib 

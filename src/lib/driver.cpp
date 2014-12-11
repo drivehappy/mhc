@@ -13,13 +13,13 @@
 #include "codegen.h"
 
 
-using namespace marklar;
+using namespace mhc;
 using namespace parser;
 
 using namespace llvm;
 using namespace std;
 
-namespace marklar {
+namespace mhc {
 
 	namespace driver {
 

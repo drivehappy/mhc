@@ -14,7 +14,7 @@
 #include <iostream>
 
 
-using namespace marklar;
+using namespace mhc;
 using namespace parser;
 
 using namespace llvm;

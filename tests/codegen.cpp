@@ -14,7 +14,7 @@
 #include <llvm/IR/Module.h>
 #include <llvm/Support/raw_ostream.h>
 
-using namespace marklar;
+using namespace mhc;
 using namespace parser;
 
 using namespace llvm;
