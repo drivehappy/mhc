@@ -3,6 +3,7 @@
 #define BOOST_SPIRIT_DEBUG 
 
 #include <boost/spirit/include/qi.hpp>
+#include <boost/spirit/include/qi_lexeme.hpp>
 #include <boost/spirit/include/phoenix_core.hpp>
 #include <boost/spirit/include/phoenix_operator.hpp>
 #include <boost/spirit/include/phoenix_fusion.hpp>
@@ -101,9 +102,10 @@ namespace parser {
 
 	qi::char_type char_;
 
-	struct _reserved_symbols : qi::symbols<char, unsigned int>
+	// Symbols for reservedid
+	struct _reservedid_symbols : qi::symbols<char, unsigned int>
 	{
-		_reserved_symbols()
+		_reservedid_symbols()
 		{
 			/*
 			reservedid %=
@@ -118,7 +120,28 @@ namespace parser {
 			("case", 2)
 			;
 		}
-	} reserved_symbols;
+	} reservedid_symbols;
+
+	// Symbols for reservedop
+	struct _reservedop_symbols : qi::symbols<char, unsigned int>
+	{
+		_reservedop_symbols()
+		{
+			add
+			("..",  1)
+			(":",   2)
+			("::",  3)
+			("=",   4)
+			("\\",  5)
+			("|",   6)
+			("<-",  7)
+			("->",  8)
+			("@",   9)
+			("~",  10)
+			("=>", 11)
+			;
+		}
+	} reservedop_symbols;
 
 	// Skip parser used from: http://www.boost.org/doc/libs/1_56_0/libs/spirit/example/qi/compiler_tutorial/mini_c/skipper.hpp
 	template <typename Iterator>
@@ -165,17 +188,53 @@ namespace parser {
 
 			rootNode %=
 				   qi::eps
-				//>> *reservedid
 				>> *varid
 				>> qi::eoi;
 
+			// Identifiers
 			varid %=
 				   (!reservedid)
 				>> (qi::char_("a-z_") >> *qi::char_("a-z_A-Z0-9'"));
 
+			conid %=
+				   qi::char_("A-Z") >> *qi::char_("a-zA-Z0-9'");
+
 			reservedid %=
-				   reserved_symbols
+				   reservedid_symbols
 				>> !(char_("a-zA-Z0-9'_"));
+
+			// Operators
+			special %= qi::char_("(),;[]`{}");
+
+			symbol %=
+				   (!special)
+				>> (qi::char_("A-Z"));
+
+			varsym %=
+				   (!reservedop)
+				>> (
+				       (!qi::char_(":"))
+				    >> (symbol >> *symbol)
+				   );
+
+			reservedop %= reservedop_symbols;
+
+			// Type variable
+			tyvar %= varid;
+
+			// Type contructor
+			tycon %= conid;
+
+			// Type class
+			tycls %= conid;
+
+			// Modules
+			//modid %= (qi::lexeme[*(conid >> '.')]) >> conid;
+			conid_noskip %= qi::char_("A-Z") >> *qi::char_("a-zA-Z0-9'");
+			modid %= (qi::lexeme[*(conid_noskip >> '.')]) >> conid_noskip;
+
+			// Qualified
+			qvarid %= -(modid >> ".") >> varid;
 
 			/*
 			reservedid %=
@@ -300,8 +359,22 @@ namespace parser {
 		qi::rule<Iterator, base_expr_node(),	skipper<Iterator>> start;
 		qi::rule<Iterator, base_expr(),			skipper<Iterator>> rootNode;
 		qi::rule<Iterator, string(),			skipper<Iterator>> varid;
+		qi::rule<Iterator, string(),			skipper<Iterator>> conid;
 		qi::rule<Iterator, string(),			skipper<Iterator>> reservedid;
 
+		qi::rule<Iterator, string(),			skipper<Iterator>> special;
+		qi::rule<Iterator, string(),			skipper<Iterator>> symbol;
+		qi::rule<Iterator, string(),			skipper<Iterator>> varsym;
+		qi::rule<Iterator, string(),			skipper<Iterator>> consym;
+		qi::rule<Iterator, string(),			skipper<Iterator>> reservedop;
+
+		qi::rule<Iterator, string(),			skipper<Iterator>> tyvar;
+		qi::rule<Iterator, string(),			skipper<Iterator>> tycon;
+		qi::rule<Iterator, string(),			skipper<Iterator>> tycls;
+		qi::rule<Iterator, string(),			skipper<Iterator>> modid;
+		qi::rule<Iterator, string()								 > conid_noskip;
+
+		qi::rule<Iterator, string(),			skipper<Iterator>> qvarid;
 
 		// Old Marklar eventually delete these
 		qi::rule<Iterator, func_expr(), skipper<Iterator>> funcExpr;

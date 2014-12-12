@@ -2,5 +2,5 @@
 *.swo
 *.o
 
-build/main
-build/tests
+build/mhc
+build/mhc-tests
