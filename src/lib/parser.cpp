@@ -245,98 +245,6 @@ namespace parser {
 				;
 			*/
 
-			funcExpr %=
-				  "mhc"
-				>> varName
-				>> '(' >> *(varDef % ',') >> ')'
-				>> '{'
-				>> *varDecl
-				>> *baseExpr
-				>> -returnExpr
-				>> '}'
-				;
-
-			varDef %=
-				  "mhc"
-				>> varName
-				;
-
-			varDecl %=
-				   varDef
-				>> -('=' >> (op_expr | value))
-				>> ';'
-				;
-
-			op_expr %=
-				   factor
-				>> *(op >> factor);
-
-			factor %=
-				  qi::lit('(') >> op_expr >> ')'
-				| callExpr
-				| value;
-
-			baseExpr %= intLiteral | returnExpr | (callExpr >> ';') | ifExpr | varDecl | varAssign | whileLoop;
-
-			// Small hack to only allow op_expr, but allow boost::fusion to use
-			// the base_node_expr type still (if we didn't, then baseExpr would
-			// be used, and it would parse odd things)
-			callBaseExpr %= op_expr;
-
-			callExpr %=
-				   varName
-				>> '(' >> *(callBaseExpr % ',') >> ')'
-				;
-
-			returnExpr %=
-				   "return"
-				>> (callExpr | op_expr | value)
-				>> ';'
-				;
-
-			ifExpr %=
-				   qi::lit("if")
-				>> '('
-				>> op_expr
-				>> ')' >> '{'
-				>> *baseExpr
-				>> '}'
-				>> -(qi::lit("else") >> '{' >> *baseExpr >> '}')
-				;
-
-			whileLoop %=
-				   qi::lit("while")
-				>> '('
-				>> op_expr
-				>> ')' >> '{'
-				>> *baseExpr
-				>> '}'
-				;
-
-			varAssign %=
-				   varName
-				>> ('=' >> (op_expr | value))
-				>> ';'
-				;
-
-			varName %= qi::char_("a-zA-Z_") >> *qi::char_("a-zA-Z_0-9");
-			intLiteral %= +qi::char_("0-9");
-			value %= (varName | intLiteral);
-
-			// '>>' before the next '>' or else it will be matched as greater-than
-			op %=
-				  ascii::string(">>")
-				| ascii::string("<<")
-				| ascii::string(">=")
-				| ascii::string("<=")
-				| ascii::string("!=")
-				| ascii::string("==")
-				| ascii::string("||")
-				| ascii::string("&&")
-				| qi::char_("+<>%/*&")
-				| qi::char_("\\-")
-				;
-
 			// Debugging
 			/*
 			BOOST_SPIRIT_DEBUG_NODE(varid);
@@ -375,25 +283,6 @@ namespace parser {
 		qi::rule<Iterator, string()								 > conid_noskip;
 
 		qi::rule<Iterator, string(),			skipper<Iterator>> qvarid;
-
-		// Old Marklar eventually delete these
-		qi::rule<Iterator, func_expr(), skipper<Iterator>> funcExpr;
-		qi::rule<Iterator, decl_expr(), skipper<Iterator>> varDecl;
-		qi::rule<Iterator, string(), skipper<Iterator>> varDef;
-		qi::rule<Iterator, binary_op(), skipper<Iterator>> op_expr;
-		qi::rule<Iterator, base_expr_node(), skipper<Iterator>> baseExpr;
-		qi::rule<Iterator, base_expr_node(), skipper<Iterator>> callBaseExpr;
-		qi::rule<Iterator, return_expr(), skipper<Iterator>> returnExpr;
-		qi::rule<Iterator, call_expr(), skipper<Iterator>> callExpr;
-		qi::rule<Iterator, if_expr(), skipper<Iterator>> ifExpr;
-		qi::rule<Iterator, while_loop(), skipper<Iterator>> whileLoop;
-		qi::rule<Iterator, var_assign(), skipper<Iterator>> varAssign;
-
-		qi::rule<Iterator, base_expr_node(), skipper<Iterator>> factor;
-		qi::rule<Iterator, std::string(), skipper<Iterator>> varName;
-		qi::rule<Iterator, std::string(), skipper<Iterator>> intLiteral;
-		qi::rule<Iterator, std::string(), skipper<Iterator>> value;
-		qi::rule<Iterator, std::string(), skipper<Iterator>> op;
 	};
 
 }
