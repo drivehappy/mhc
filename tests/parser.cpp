@@ -150,3 +150,9 @@ TEST(ParserTest, Char_Invalid) {
 	EXPECT_FALSE(parse(input));
 }
 
+TEST(ParserTest, Type_Expr) {
+	const auto input = "top :: Int a -> a";
+
+	EXPECT_TRUE(parse(input));
+}
+
