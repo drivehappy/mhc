@@ -68,21 +68,61 @@ TEST(ParserTest, Identifier_ValidStartsWithReserved) {
 	EXPECT_TRUE(parse(input));
 }
 
-TEST(ParserTest, Identifier_InvalidLarge) {
+TEST(ParserTest, Identifier_ValidLarge) {
 	const auto input = "Alkjlkj";
 
-	EXPECT_FALSE(parse(input));
+	EXPECT_TRUE(parse(input));
 }
 
-TEST(ParserTest, Identifier_InvalidReservedId) {
+TEST(ParserTest, Identifier_ValidReservedId) {
 	const auto input = "case";
 
-	EXPECT_FALSE(parse(input));
+	EXPECT_TRUE(parse(input));
 }
 
-TEST(ParserTest, Identifier_InvalidReservedId_Unused) {
+TEST(ParserTest, Identifier_ValidReservedId_Unused) {
 	const auto input = "_";
 
-	EXPECT_FALSE(parse(input));
+	EXPECT_TRUE(parse(input));
+}
+
+TEST(ParserTest, QualifiedName) {
+	const auto input = "F.g";
+
+	EXPECT_TRUE(parse(input));
+}
+
+TEST(ParserTest, QualifiedName_DoubleDot) {
+	const auto input = "f..";
+
+	EXPECT_TRUE(parse(input));
+}
+
+TEST(ParserTest, Literal_Integer_Decimal) {
+	const auto input = "42";
+
+	EXPECT_TRUE(parse(input));
+}
+
+TEST(ParserTest, Literal_Integer_Octal) {
+	const auto input = "0o17";
+
+	EXPECT_TRUE(parse(input));
+}
+
+TEST(ParserTest, Literal_Integer_Hexadecimal) {
+	const auto input = "0x17";
+
+	EXPECT_TRUE(parse(input));
+}
+
+TEST(ParserTest, Literal_Integer_BadHexadecimal) {
+	// This is expected to be parsed correctly, except not as hexdecimal:
+	//  '0'  (decimal)
+	//  'x'  (identifier)
+	//  '17' (decimal)
+	const auto input = "0x 17";
+
+	EXPECT_TRUE(parse(input));
 }
 

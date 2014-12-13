@@ -184,17 +184,36 @@ namespace parser {
 	{
 		mhc_grammar() : mhc_grammar::base_type(start)
 		{
-			start %= rootNode;
+			start %= program;
 
-			rootNode %=
+			program %=
 				   qi::eps
-				>> *varid
-				>> qi::eoi;
+				>> *lexeme_
+				>> qi::eoi
+				;
+
+			lexeme_ %=
+				  qvarid
+				| qconid
+				| qvarsym
+				| qconsym
+				| special
+				| reservedop
+				| reservedid
+				| literal
+				;
+
+			literal %=
+				  integer
+				| float_ 
+				//| qi::char_
+				//| qi::string
+				;
 
 			// Identifiers
 			varid %=
 				   (!reservedid)
-				>> (qi::char_("a-z_") >> *qi::char_("a-z_A-Z0-9'"));
+				>> qi::lexeme[(qi::char_("a-z_") >> *qi::char_("a-z_A-Z0-9'"))];
 
 			conid %=
 				   qi::char_("A-Z") >> *qi::char_("a-zA-Z0-9'");
@@ -231,10 +250,46 @@ namespace parser {
 			// Modules
 			//modid %= (qi::lexeme[*(conid >> '.')]) >> conid;
 			conid_noskip %= qi::char_("A-Z") >> *qi::char_("a-zA-Z0-9'");
-			modid %= (qi::lexeme[*(conid_noskip >> '.')]) >> conid_noskip;
+			modid %=
+				conid |
+				(
+					  *(qi::lexeme[(conid_noskip >> '.')])
+				   >> conid_noskip
+				)
+				;
 
 			// Qualified
-			qvarid %= -(modid >> ".") >> varid;
+			qvarid %= -(modid >> '.') >> varid;
+			qconid %= -(modid >> '.') >> conid;
+			qtycon %= -(modid >> '.') >> tycon;
+			qtycls %= -(modid >> '.') >> tycls;
+			qvarsym %= -(modid >> '.') >> varsym;
+			qconsym %= -(modid >> '.') >> consym;
+
+			// Numeric Literals
+			octit %= qi::char_("0-7");
+			hexit %= qi::digit | qi::char_("A-F") | qi::char_("a-f");
+
+			decimal %= qi::lexeme[+qi::digit];
+			octal %= +octit;
+			hexadecimal %= +hexit;
+
+			integer %=
+				  qi::lexeme[(("0o" >> octal) | ("0O" >> octal))]
+				| (qi::lexeme[("0x" >> hexadecimal)] | qi::lexeme[("0X" >> hexadecimal)])
+				| decimal
+				;
+
+			float_ %=
+				  (decimal >> "." >> decimal >> -(exponent))
+				| (decimal >> exponent)
+				;
+
+			exponent %=
+				   (qi::lit('e') | 'E')
+				>> -(qi::lit('+') | '-')
+				>> decimal
+				;
 
 			/*
 			reservedid %=
@@ -247,25 +302,40 @@ namespace parser {
 
 			// Debugging
 			/*
+			BOOST_SPIRIT_DEBUG_NODE(start);
+			BOOST_SPIRIT_DEBUG_NODE(program);
+			BOOST_SPIRIT_DEBUG_NODE(lexeme_);
+			BOOST_SPIRIT_DEBUG_NODE(literal);
 			BOOST_SPIRIT_DEBUG_NODE(varid);
-			BOOST_SPIRIT_DEBUG_NODE(reservedid);
-			BOOST_SPIRIT_DEBUG_NODE(funcExpr);
-			BOOST_SPIRIT_DEBUG_NODE(varDecl);
-			BOOST_SPIRIT_DEBUG_NODE(baseExpr);
-			BOOST_SPIRIT_DEBUG_NODE(ifExpr);
-			BOOST_SPIRIT_DEBUG_NODE(op_expr);
-			BOOST_SPIRIT_DEBUG_NODE(returnExpr);
-			BOOST_SPIRIT_DEBUG_NODE(callExpr);
-			BOOST_SPIRIT_DEBUG_NODE(op);
-			BOOST_SPIRIT_DEBUG_NODE(value);
-			BOOST_SPIRIT_DEBUG_NODE(intLiteral);
-			BOOST_SPIRIT_DEBUG_NODE(factor);
-			BOOST_SPIRIT_DEBUG_NODE(whileLoop);
+			BOOST_SPIRIT_DEBUG_NODE(conid);
 			*/
+			#if 0
+			BOOST_SPIRIT_DEBUG_NODE(reservedid);
+			BOOST_SPIRIT_DEBUG_NODE(special);
+			BOOST_SPIRIT_DEBUG_NODE(symbol);
+			BOOST_SPIRIT_DEBUG_NODE(reservedop);
+			BOOST_SPIRIT_DEBUG_NODE(conid_noskip);
+			BOOST_SPIRIT_DEBUG_NODE(modid);
+			BOOST_SPIRIT_DEBUG_NODE(qvarid);
+			BOOST_SPIRIT_DEBUG_NODE(qconid);
+			#endif
+
+			#if 0
+			BOOST_SPIRIT_DEBUG_NODE(integer);
+			BOOST_SPIRIT_DEBUG_NODE(float_);
+			BOOST_SPIRIT_DEBUG_NODE(exponent);
+			BOOST_SPIRIT_DEBUG_NODE(decimal);
+			BOOST_SPIRIT_DEBUG_NODE(octal);
+			BOOST_SPIRIT_DEBUG_NODE(hexadecimal);
+			BOOST_SPIRIT_DEBUG_NODE(hexit);
+			#endif
 		}
 
 		qi::rule<Iterator, base_expr_node(),	skipper<Iterator>> start;
-		qi::rule<Iterator, base_expr(),			skipper<Iterator>> rootNode;
+		qi::rule<Iterator, base_expr(),			skipper<Iterator>> program;
+		qi::rule<Iterator, string(),			skipper<Iterator>> lexeme_;
+		qi::rule<Iterator, string(),			skipper<Iterator>> literal;
+
 		qi::rule<Iterator, string(),			skipper<Iterator>> varid;
 		qi::rule<Iterator, string(),			skipper<Iterator>> conid;
 		qi::rule<Iterator, string(),			skipper<Iterator>> reservedid;
@@ -283,6 +353,21 @@ namespace parser {
 		qi::rule<Iterator, string()								 > conid_noskip;
 
 		qi::rule<Iterator, string(),			skipper<Iterator>> qvarid;
+		qi::rule<Iterator, string(),			skipper<Iterator>> qconid;
+		qi::rule<Iterator, string(),			skipper<Iterator>> qtycon;
+		qi::rule<Iterator, string(),			skipper<Iterator>> qtycls;
+		qi::rule<Iterator, string(),			skipper<Iterator>> qvarsym;
+		qi::rule<Iterator, string(),			skipper<Iterator>> qconsym;
+		
+		qi::rule<Iterator, string()								 > octit;
+		qi::rule<Iterator, string()								 > hexit;
+		qi::rule<Iterator, string(),			skipper<Iterator>> decimal;
+		qi::rule<Iterator, string()								 > octal;
+		qi::rule<Iterator, string()								 > hexadecimal;
+
+		qi::rule<Iterator, string(),			skipper<Iterator>> integer;
+		qi::rule<Iterator, string(),			skipper<Iterator>> float_;
+		qi::rule<Iterator, string(),			skipper<Iterator>> exponent;
 	};
 
 }
