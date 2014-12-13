@@ -206,8 +206,27 @@ namespace parser {
 			literal %=
 				  integer
 				| float_ 
-				//| qi::char_
-				//| qi::string
+				| char__
+				| string__
+				;
+
+			special %= qi::char_("(),;[]`{}");
+
+			ascSymbol %= qi::char_("!#$%&*+./<=>?@\\^|-~:");
+
+			symbol %=
+				   (!special)
+				//>> (qi::char_("A-Z"));
+				>> ascSymbol;
+
+			graphic %=
+				  qi::char_("a-z")
+				| qi::char_("A-Z")
+				| symbol
+				| qi::digit
+				| special
+				| '"'
+				| '\''
 				;
 
 			// Identifiers
@@ -223,12 +242,6 @@ namespace parser {
 				>> !(char_("a-zA-Z0-9'_"));
 
 			// Operators
-			special %= qi::char_("(),;[]`{}");
-
-			symbol %=
-				   (!special)
-				>> (qi::char_("A-Z"));
-
 			varsym %=
 				   (!reservedop)
 				>> (
@@ -291,6 +304,31 @@ namespace parser {
 				>> decimal
 				;
 
+			// Character and String Literals
+			char__ %=
+				   "'"
+				>> ( (graphic - (qi::lit("'") | "\\"))
+				   | escape
+				   )
+				>> "'"
+				;
+ 
+			string__ %=
+				   '"'
+				>> -(graphic)
+				;
+
+			escape %=
+				   '\\'
+				>> ( qi::char_("abfnrtv\\\"'&")
+				   //| // TODO: ascii
+				     | decimal
+				     | ('o' >> octal)
+				     | ('x' >> hexadecimal)
+				   )
+				;
+				
+
 			/*
 			reservedid %=
 				  qi::string("case") | "class" | "data" | "default" | "deriving" | "do" | "else"
@@ -328,6 +366,10 @@ namespace parser {
 			BOOST_SPIRIT_DEBUG_NODE(octal);
 			BOOST_SPIRIT_DEBUG_NODE(hexadecimal);
 			BOOST_SPIRIT_DEBUG_NODE(hexit);
+
+			BOOST_SPIRIT_DEBUG_NODE(graphic);
+			BOOST_SPIRIT_DEBUG_NODE(char__);
+			BOOST_SPIRIT_DEBUG_NODE(string__);
 			#endif
 		}
 
@@ -340,8 +382,10 @@ namespace parser {
 		qi::rule<Iterator, string(),			skipper<Iterator>> conid;
 		qi::rule<Iterator, string(),			skipper<Iterator>> reservedid;
 
+		qi::rule<Iterator, string(),			skipper<Iterator>> ascSymbol;
 		qi::rule<Iterator, string(),			skipper<Iterator>> special;
 		qi::rule<Iterator, string(),			skipper<Iterator>> symbol;
+		qi::rule<Iterator, string(),			skipper<Iterator>> graphic;
 		qi::rule<Iterator, string(),			skipper<Iterator>> varsym;
 		qi::rule<Iterator, string(),			skipper<Iterator>> consym;
 		qi::rule<Iterator, string(),			skipper<Iterator>> reservedop;
@@ -368,6 +412,10 @@ namespace parser {
 		qi::rule<Iterator, string(),			skipper<Iterator>> integer;
 		qi::rule<Iterator, string(),			skipper<Iterator>> float_;
 		qi::rule<Iterator, string(),			skipper<Iterator>> exponent;
+
+		qi::rule<Iterator, string(),			skipper<Iterator>> char__;
+		qi::rule<Iterator, string(),			skipper<Iterator>> string__;
+		qi::rule<Iterator, string(),			skipper<Iterator>> escape;
 	};
 
 }

@@ -126,3 +126,27 @@ TEST(ParserTest, Literal_Integer_BadHexadecimal) {
 	EXPECT_TRUE(parse(input));
 }
 
+TEST(ParserTest, String_Valid) {
+	const auto input = "\"I am a string\"";
+
+	EXPECT_TRUE(parse(input));
+}
+
+TEST(ParserTest, String_Escaped) {
+	const auto input = "\"I am an \"escaped\" string\"";
+
+	EXPECT_TRUE(parse(input));
+}
+
+TEST(ParserTest, Char_Valid) {
+	const auto input = "'I'";
+
+	EXPECT_TRUE(parse(input));
+}
+
+TEST(ParserTest, Char_Invalid) {
+	const auto input = "'am'";
+
+	EXPECT_FALSE(parse(input));
+}
+
