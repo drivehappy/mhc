@@ -167,11 +167,9 @@ namespace parser {
 				>> "-}"
 				;
 
-			#if 0
 			// Debugging
 			BOOST_SPIRIT_DEBUG_NODE(start);
 			BOOST_SPIRIT_DEBUG_NODE(ncomment);
-			#endif
         }
 
         qi::rule<Iterator> start;
@@ -186,11 +184,15 @@ namespace parser {
 		{
 			start %= program;
 
+			// Haskell Report Chapter2: This is the lexical structure,
+			// the Expressions and Declarations/Binds are below (Chapter3 and 4)
+			/*
 			program %=
 				   qi::eps
 				>> *lexeme_
 				>> qi::eoi
 				;
+			*/
 
 			lexeme_ %=
 				  qvarid
@@ -327,21 +329,99 @@ namespace parser {
 				     | ('x' >> hexadecimal)
 				   )
 				;
-				
+	
 
-			/*
-			reservedid %=
-				  qi::string("case") | "class" | "data" | "default" | "deriving" | "do" | "else"
-				| "foreign" | "if" | "import" | "in" | "infix" | "infixl"
-				| "infixr" | "instance" | "let" | "module" | "newtype" | "of"
-				| "then" | "type" | "where" | "_"
+			// Haskell Report Chapter3: Expressions
+			var %= varid; /* TODO: | varsym*/
+
+			
+
+			// Haskell Report Chapter4: Declarations and Bindings
+			program %=
+				   qi::eps
+				>> module
+				>> qi::eoi
 				;
-			*/
+
+			module %=
+				  ("module" >> modid >> /* TODO: -(exports) >> */ "where" >> body)
+				| body;
+
+			body %=
+				  /* TODO: '{' >> impdecls >> ';' >> topdecls >> '}' >>*/  // ch5: Modules
+				  '{' >> topdecls >> '}';
+
+			topdecls %=
+				  topdecl % ';';
+
+			topdecl %=
+				  ("type" >> simpletype >> "=" >> type)
+				| ("class" >> /* TODO: -(scontext >> "=>") >>*/ tycls >> tyvar >> -("where" >> cdecls))
+				| decl;
+
+			decls %=
+				  ("{" >> (decl % ';') >> "}");
+
+			decl %=
+				  gendecl;
+				/* TODO: | (funlhs | var) rhs*/
+
+			cdecls %=
+				  ("{" >> (cdecl % ';') >> "}");
+
+			cdecl %=
+				  gendecl;
+				/* TODO: | (funlhs | var) rhs*/
+
+			gendecl %=
+				  (vars >> "::" >> /* TODO: -(context >> "=>") >>"*/ type)
+				| (fixity >> -integer >> ops);
+				/* TODO: Empty decl, unsure how to handle this */
+
+			varop %=
+				  varsym
+				| ("`" >> varid  >> "`");
+
+			conop %=
+				  consym
+				| ("`" >> conid  >> "`");
+
+			op %= varop | conop;
+
+			ops %= (op % ',');
+			vars %= (var % ',');
+			fixity %= qi::lit("infixl") | "infixr" | "infix";
+
+			// CH 4.1.2: Syntax of Types
+			type %= btype >> -("->" >> type);
+
+			btype %= -(btype) >> atype;
+
+			atype %=
+				  gtycon
+				| tyvar
+				| ("(" >> (type >> ',' >> type >> ',' >> (type % ',')) >> ")")
+				| ("[" >> type >> "]")
+				| ("(" >> type >> ")");
+
+			gtycon %=
+				  qtycon
+				| "()"									// unit type
+				| "[]"									// list constructor
+				| "(->)"								// function constructor
+				| ("(," >> (*qi::char_(',')) >> ")");	// tupling constructor
+
+			// CH 4.2.1: Algebraic Datatype Decls
+			simpletype %=
+				  tycon >> *tyvar;
 
 			// Debugging
-			/*
 			BOOST_SPIRIT_DEBUG_NODE(start);
 			BOOST_SPIRIT_DEBUG_NODE(program);
+			BOOST_SPIRIT_DEBUG_NODE(module);
+			BOOST_SPIRIT_DEBUG_NODE(modid);
+			BOOST_SPIRIT_DEBUG_NODE(body);
+			/*
 			BOOST_SPIRIT_DEBUG_NODE(lexeme_);
 			BOOST_SPIRIT_DEBUG_NODE(literal);
 			BOOST_SPIRIT_DEBUG_NODE(varid);
@@ -416,6 +496,35 @@ namespace parser {
 		qi::rule<Iterator, string(),			skipper<Iterator>> char__;
 		qi::rule<Iterator, string(),			skipper<Iterator>> string__;
 		qi::rule<Iterator, string(),			skipper<Iterator>> escape;
+
+		qi::rule<Iterator, string(),			skipper<Iterator>> module;
+		qi::rule<Iterator, string(),			skipper<Iterator>> body;
+		qi::rule<Iterator, string(),			skipper<Iterator>> topdecls;
+		qi::rule<Iterator, string(),			skipper<Iterator>> topdecl;
+		qi::rule<Iterator, string(),			skipper<Iterator>> decls;
+		qi::rule<Iterator, string(),			skipper<Iterator>> decl;
+		qi::rule<Iterator, string(),			skipper<Iterator>> cdecls;
+		qi::rule<Iterator, string(),			skipper<Iterator>> cdecl;
+		qi::rule<Iterator, string(),			skipper<Iterator>> gendecl;
+
+		qi::rule<Iterator, string(),			skipper<Iterator>> ops;
+		qi::rule<Iterator, string(),			skipper<Iterator>> vars;
+		qi::rule<Iterator, string(),			skipper<Iterator>> fixity;
+
+		// CH 3: Expressions
+		qi::rule<Iterator, string(),			skipper<Iterator>> var;
+		qi::rule<Iterator, string(),			skipper<Iterator>> varop;
+		qi::rule<Iterator, string(),			skipper<Iterator>> conop;
+		qi::rule<Iterator, string(),			skipper<Iterator>> op;
+
+		// CH 4.1.2 Syntax of Types
+		qi::rule<Iterator, string(),			skipper<Iterator>> type;
+		qi::rule<Iterator, string(),			skipper<Iterator>> btype;
+		qi::rule<Iterator, string(),			skipper<Iterator>> atype;
+		qi::rule<Iterator, string(),			skipper<Iterator>> gtycon;
+
+		// CH 4.2.1 Algebraic Datatype
+		qi::rule<Iterator, string(),			skipper<Iterator>> simpletype;
 	};
 
 }
