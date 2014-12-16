@@ -168,8 +168,10 @@ namespace parser {
 				;
 
 			// Debugging
+			#if 0
 			BOOST_SPIRIT_DEBUG_NODE(start);
 			BOOST_SPIRIT_DEBUG_NODE(ncomment);
+			#endif
         }
 
         qi::rule<Iterator> start;
@@ -349,7 +351,8 @@ namespace parser {
 
 			body %=
 				  /* TODO: '{' >> impdecls >> ';' >> topdecls >> '}' >>*/  // ch5: Modules
-				  '{' >> topdecls >> '}';
+				  /*'{' >> topdecls >> '}';*/
+				  *topdecls;
 
 			topdecls %=
 				  topdecl % ';';
@@ -416,12 +419,12 @@ namespace parser {
 				  tycon >> *tyvar;
 
 			// Debugging
+			/*
 			BOOST_SPIRIT_DEBUG_NODE(start);
 			BOOST_SPIRIT_DEBUG_NODE(program);
 			BOOST_SPIRIT_DEBUG_NODE(module);
 			BOOST_SPIRIT_DEBUG_NODE(modid);
 			BOOST_SPIRIT_DEBUG_NODE(body);
-			/*
 			BOOST_SPIRIT_DEBUG_NODE(lexeme_);
 			BOOST_SPIRIT_DEBUG_NODE(literal);
 			BOOST_SPIRIT_DEBUG_NODE(varid);
