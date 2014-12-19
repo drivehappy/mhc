@@ -12,6 +12,29 @@ using namespace mhc;
 using namespace parser;
 using namespace std;
 
+
+
+TEST(ASTTest, DataType) {
+	// Taken from Real World Haskell, Ch. 3
+	const auto input =
+		"data BookInfo = Book Int String [String]"
+		"                deriving (Show)";
+
+	base_expr_node root;
+	EXPECT_TRUE(parse(input, root));
+
+	const auto expr = boost::get<base_expr>(&root);
+	EXPECT_TRUE(expr != nullptr);
+
+	// We expect to have our func_expr in this root node
+	EXPECT_EQ(1, expr->children.size());
+	const auto exprF = boost::get<string>(&expr->children[0]);
+	EXPECT_TRUE(exprF != nullptr);
+
+	EXPECT_EQ("", *exprF);
+}
+
+
 #if 0
 TEST(ASTTest, BasicFunction) {
 	const auto testProgram =

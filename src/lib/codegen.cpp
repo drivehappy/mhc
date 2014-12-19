@@ -81,6 +81,7 @@ Value* ast_codegen::operator()(const parser::base_expr& expr) {
 	return nullptr;
 }
 
+#if 0
 Value* ast_codegen::operator()(const parser::func_expr& func) {
 	//cerr << "Generating code for Function \"" << func.functionName << "\"" << endl;
 
@@ -522,4 +523,4 @@ Value* ast_codegen::operator()(const parser::var_assign& assign) {
 	
 	return m_builder.CreateStore(rhsVal, itr->second);
 }
-
+#endif

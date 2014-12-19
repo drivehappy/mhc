@@ -42,7 +42,40 @@ TEST(ParserTest, LineCommentEOI) {
 	EXPECT_TRUE(parse(input));
 }
 
+TEST(ParserTest, GeneralDeclaration) {
+	const auto input =
+		"validIdentifier :: ()";
 
+	EXPECT_TRUE(parse(input));
+}
+
+TEST(ParserTest, SimpleDataType) {
+	const auto input =
+		"data BookInfo";
+
+	EXPECT_TRUE(parse(input));
+}
+
+TEST(ParserTest, DataType) {
+	// Taken from Real World Haskell, Ch. 3
+	const auto input =
+		"data BookInfo = Book Int String [String]"
+		"                deriving (Show)";
+
+	EXPECT_TRUE(parse(input));
+}
+
+TEST(ParserTest, DataType_Invalid) {
+	// Invalid, should specificy type, not a variable
+	const auto input =
+		"data BookInfo = book";
+
+	EXPECT_FALSE(parse(input));
+}
+
+
+
+/*
 // Identifiers
 TEST(ParserTest, Identifier_Valid) {
 	const auto input = "validIdentifier";
@@ -155,4 +188,4 @@ TEST(ParserTest, Type_Expr) {
 
 	EXPECT_TRUE(parse(input));
 }
-
+*/

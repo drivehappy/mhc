@@ -28,6 +28,12 @@ namespace fusion = boost::fusion;
 namespace repo = boost::spirit::repository;
 
 
+BOOST_FUSION_ADAPT_STRUCT(
+	parser::base_expr,
+	(std::vector<parser::base_expr_node>, children)
+)
+
+/*
 // Old Marklar rules
 BOOST_FUSION_ADAPT_STRUCT(
 	parser::operation,
@@ -96,7 +102,7 @@ BOOST_FUSION_ADAPT_STRUCT(
 	(std::string, varName)
 	(parser::base_expr_node, varRhs)
 )
-
+*/
 
 namespace parser {
 
@@ -116,8 +122,9 @@ namespace parser {
 			*/
 			
 			add
-			("_",    1)
-			("case", 2)
+			("_",        1)
+			("case",     2)
+			("deriving", 3)
 			;
 		}
 	} reservedid_symbols;
@@ -336,7 +343,7 @@ namespace parser {
 			// Haskell Report Chapter3: Expressions
 			var %= varid; /* TODO: | varsym*/
 
-			
+			con %= conid; /* TODO: | consym*/
 
 			// Haskell Report Chapter4: Declarations and Bindings
 			program %=
@@ -359,11 +366,13 @@ namespace parser {
 
 			topdecl %=
 				  ("type" >> simpletype >> "=" >> type)
+				| ("data" >> /* TODO: -(context >> "=>") >>*/ simpletype >> -('=' >> constrs) >> -(deriving))
 				| ("class" >> /* TODO: -(scontext >> "=>") >>*/ tycls >> tyvar >> -("where" >> cdecls))
 				| decl;
 
 			decls %=
-				  ("{" >> (decl % ';') >> "}");
+				  //("{" >> (decl % ';') >> "}");
+				  (decl % ';');
 
 			decl %=
 				  gendecl;
@@ -398,7 +407,12 @@ namespace parser {
 			// CH 4.1.2: Syntax of Types
 			type %= btype >> -("->" >> type);
 
-			btype %= -(btype) >> atype;
+			// This fixes left recursion, the actually rule is:
+			//btype %= -(btype) >> atype;
+			btype %= atype >> btype_helper;
+			btype_helper %=
+				  atype >> btype_helper
+				| qi::eps;
 
 			atype %=
 				  gtycon
@@ -413,6 +427,22 @@ namespace parser {
 				| "[]"									// list constructor
 				| "(->)"								// function constructor
 				| ("(," >> (*qi::char_(',')) >> ")");	// tupling constructor
+
+			// TODO
+			constrs %= (constr % '|');
+			constr %=
+				  con  >> -(qi::lit('!')) >> *atype >> -(qi::lit('!')) >> -(atype)
+				;
+				//| (btype | (qi::lit('!') >> atype)) >> conop >> (btype | (qi::lit('!') >> atype))
+				//| con >> *(fielddecl);
+
+			fielddecl %=
+				  vars >> "::" >> (type | (qi::lit('!') >> atype));
+			
+			deriving %=
+				  qi::lit("deriving") >> (dclass | (dclass % ','));
+
+			dclass %= qtycls;
 
 			// CH 4.2.1: Algebraic Datatype Decls
 			simpletype %=
@@ -440,6 +470,14 @@ namespace parser {
 			BOOST_SPIRIT_DEBUG_NODE(qvarid);
 			BOOST_SPIRIT_DEBUG_NODE(qconid);
 			#endif
+
+			BOOST_SPIRIT_DEBUG_NODE(topdecl);
+			BOOST_SPIRIT_DEBUG_NODE(simpletype);
+			BOOST_SPIRIT_DEBUG_NODE(constrs);
+			BOOST_SPIRIT_DEBUG_NODE(constr);
+			BOOST_SPIRIT_DEBUG_NODE(varid);
+			BOOST_SPIRIT_DEBUG_NODE(reservedid);
+			BOOST_SPIRIT_DEBUG_NODE(deriving);
 
 			#if 0
 			BOOST_SPIRIT_DEBUG_NODE(integer);
@@ -519,12 +557,20 @@ namespace parser {
 		qi::rule<Iterator, string(),			skipper<Iterator>> varop;
 		qi::rule<Iterator, string(),			skipper<Iterator>> conop;
 		qi::rule<Iterator, string(),			skipper<Iterator>> op;
+		qi::rule<Iterator, string(),			skipper<Iterator>> con;
 
 		// CH 4.1.2 Syntax of Types
 		qi::rule<Iterator, string(),			skipper<Iterator>> type;
 		qi::rule<Iterator, string(),			skipper<Iterator>> btype;
+		qi::rule<Iterator, string(),			skipper<Iterator>> btype_helper;
 		qi::rule<Iterator, string(),			skipper<Iterator>> atype;
 		qi::rule<Iterator, string(),			skipper<Iterator>> gtycon;
+
+		qi::rule<Iterator, string(),			skipper<Iterator>> constrs;
+		qi::rule<Iterator, string(),			skipper<Iterator>> constr;
+		qi::rule<Iterator, string(),			skipper<Iterator>> fielddecl;
+		qi::rule<Iterator, string(),			skipper<Iterator>> deriving;
+		qi::rule<Iterator, string(),			skipper<Iterator>> dclass;
 
 		// CH 4.2.1 Algebraic Datatype
 		qi::rule<Iterator, string(),			skipper<Iterator>> simpletype;

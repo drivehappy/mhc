@@ -8,6 +8,20 @@
 namespace parser {
 
 	struct base_expr;
+
+	using base_expr_node = boost::variant<
+		boost::recursive_wrapper<base_expr>,
+		std::string
+	>;
+	
+	struct base_expr {
+		std::vector<base_expr_node> children;
+	};
+
+	//struct data_type
+
+	/*
+	struct base_expr;
 	struct func_expr;
 	struct decl_expr;
 	struct operator_expr;
@@ -88,6 +102,7 @@ namespace parser {
 		std::string varName;
 		base_expr_node varRhs;
 	};
+	*/
 
 }
 

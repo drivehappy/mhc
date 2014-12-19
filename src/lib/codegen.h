@@ -26,6 +26,7 @@ namespace mhc {
 
 		llvm::Value* operator()(const parser::base_expr& expr);
 		llvm::Value* operator()(const std::string& expr);
+		/*
 		llvm::Value* operator()(const parser::func_expr& expr);
 		llvm::Value* operator()(const parser::decl_expr& expr);
 		llvm::Value* operator()(const parser::operator_expr& expr);
@@ -35,6 +36,7 @@ namespace mhc {
 		llvm::Value* operator()(const parser::binary_op& expr);
 		llvm::Value* operator()(const parser::while_loop& expr);
 		llvm::Value* operator()(const parser::var_assign& expr);
+		*/
 
 	private:
 		llvm::Module* m_module;
