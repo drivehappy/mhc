@@ -275,11 +275,11 @@ namespace parser {
 			//modid %= (qi::lexeme[*(conid >> '.')]) >> conid;
 			conid_noskip %= qi::char_("A-Z") >> *qi::char_("a-zA-Z0-9'");
 			modid %=
-				conid |
 				(
 					  *(qi::lexeme[(conid_noskip >> '.')])
 				   >> conid_noskip
 				)
+				| conid
 				;
 
 			// Qualified
@@ -407,7 +407,7 @@ namespace parser {
 			// CH 4.1.2: Syntax of Types
 			type %= btype >> -("->" >> type);
 
-			// This fixes left recursion, the actually rule is:
+			// This fixes left recursion, the actual rule is:
 			//btype %= -(btype) >> atype;
 			btype %= atype >> btype_helper;
 			btype_helper %=
@@ -440,7 +440,8 @@ namespace parser {
 				  vars >> "::" >> (type | (qi::lit('!') >> atype));
 			
 			deriving %=
-				  qi::lit("deriving") >> (dclass | (dclass % ','));
+				  //qi::lit("deriving") >> "(" >> (dclass | (dclass % ',')) >> ")";
+				  qi::lit("deriving") >> "(" >> (dclass % ',') >> ")";
 
 			dclass %= qtycls;
 
@@ -449,6 +450,13 @@ namespace parser {
 				  tycon >> *tyvar;
 
 			// Debugging
+			BOOST_SPIRIT_DEBUG_NODE(deriving);
+			BOOST_SPIRIT_DEBUG_NODE(dclass);
+			BOOST_SPIRIT_DEBUG_NODE(qtycls);
+			BOOST_SPIRIT_DEBUG_NODE(tycls);
+			BOOST_SPIRIT_DEBUG_NODE(modid);
+			BOOST_SPIRIT_DEBUG_NODE(conid);
+
 			/*
 			BOOST_SPIRIT_DEBUG_NODE(start);
 			BOOST_SPIRIT_DEBUG_NODE(program);
@@ -471,6 +479,7 @@ namespace parser {
 			BOOST_SPIRIT_DEBUG_NODE(qconid);
 			#endif
 
+			#if 0
 			BOOST_SPIRIT_DEBUG_NODE(topdecl);
 			BOOST_SPIRIT_DEBUG_NODE(simpletype);
 			BOOST_SPIRIT_DEBUG_NODE(constrs);
@@ -478,6 +487,7 @@ namespace parser {
 			BOOST_SPIRIT_DEBUG_NODE(varid);
 			BOOST_SPIRIT_DEBUG_NODE(reservedid);
 			BOOST_SPIRIT_DEBUG_NODE(deriving);
+			#endif
 
 			#if 0
 			BOOST_SPIRIT_DEBUG_NODE(integer);

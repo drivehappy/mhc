@@ -18,7 +18,7 @@ TEST(ASTTest, DataType) {
 	// Taken from Real World Haskell, Ch. 3
 	const auto input =
 		"data BookInfo = Book Int String [String]"
-		"                deriving (Show)";
+		"                deriving (Show, Test)";
 
 	base_expr_node root;
 	EXPECT_TRUE(parse(input, root));
