@@ -3,6 +3,7 @@
 #define BOOST_SPIRIT_DEBUG 
 
 #include <boost/spirit/include/qi.hpp>
+#include <boost/spirit/include/qi_hold.hpp>
 #include <boost/spirit/include/qi_lexeme.hpp>
 #include <boost/spirit/include/phoenix_core.hpp>
 #include <boost/spirit/include/phoenix_operator.hpp>
@@ -275,20 +276,24 @@ namespace parser {
 			//modid %= (qi::lexeme[*(conid >> '.')]) >> conid;
 			conid_noskip %= qi::char_("A-Z") >> *qi::char_("a-zA-Z0-9'");
 			modid %=
-				(
-					  *(qi::lexeme[(conid_noskip >> '.')])
-				   >> conid_noskip
-				)
-				| conid
+				  //conid
+				//| (
+				  (
+				//	  (qi::lexeme[*(conid_noskip >> '.')])
+				//   >> conid_noskip
+				//	  (qi::lexeme[*(conid_noskip >> '.') >> conid_noskip])
+					  (qi::lexeme[(conid_noskip % '.')])
+				  )
 				;
 
 			// Qualified
-			qvarid %= -(modid >> '.') >> varid;
-			qconid %= -(modid >> '.') >> conid;
-			qtycon %= -(modid >> '.') >> tycon;
-			qtycls %= -(modid >> '.') >> tycls;
-			qvarsym %= -(modid >> '.') >> varsym;
-			qconsym %= -(modid >> '.') >> consym;
+			qvarid %= -(qi::hold[modid >> '.']) >> varid;
+			qconid %= -(qi::hold[modid >> '.']) >> conid;
+			qtycon %= -(qi::hold[modid >> '.']) >> tycon;
+			qtycls %= -(qi::hold[modid >> '.']) >> tycls;
+			//qtycls %= tycls;
+			qvarsym %= -(qi::hold[modid >> '.']) >> varsym;
+			qconsym %= -(qi::hold[modid >> '.']) >> consym;
 
 			// Numeric Literals
 			octit %= qi::char_("0-7");
@@ -450,12 +455,22 @@ namespace parser {
 				  tycon >> *tyvar;
 
 			// Debugging
+			/*
 			BOOST_SPIRIT_DEBUG_NODE(deriving);
 			BOOST_SPIRIT_DEBUG_NODE(dclass);
 			BOOST_SPIRIT_DEBUG_NODE(qtycls);
 			BOOST_SPIRIT_DEBUG_NODE(tycls);
 			BOOST_SPIRIT_DEBUG_NODE(modid);
 			BOOST_SPIRIT_DEBUG_NODE(conid);
+			BOOST_SPIRIT_DEBUG_NODE(conid_noskip);
+			BOOST_SPIRIT_DEBUG_NODE(qtycls);
+			BOOST_SPIRIT_DEBUG_NODE(atype);
+			BOOST_SPIRIT_DEBUG_NODE(constr);
+			BOOST_SPIRIT_DEBUG_NODE(conid);
+			BOOST_SPIRIT_DEBUG_NODE(con);
+			BOOST_SPIRIT_DEBUG_NODE(btype);
+			BOOST_SPIRIT_DEBUG_NODE(type);
+			*/
 
 			/*
 			BOOST_SPIRIT_DEBUG_NODE(start);
