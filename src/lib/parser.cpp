@@ -468,7 +468,7 @@ namespace parser {
 				  gtycon
 				| tyvar
 				| ("(" >> (type >> ',' >> type >> ',' >> (type % ',')) >> ")")
-				| ("[" >> type >> "]")
+				| (qi::char_('[') >> type >> qi::char_(']'))
 				| ("(" >> type >> ")");
 
 			gtycon %=
