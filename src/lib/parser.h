@@ -8,14 +8,37 @@
 namespace parser {
 
 	struct base_expr;
+	struct module_decl;
+	struct algebraic_datatype_decl;
+	struct type_synonym_decl;
 
 	using base_expr_node = boost::variant<
 		boost::recursive_wrapper<base_expr>,
+		boost::recursive_wrapper<module_decl>,
+		boost::recursive_wrapper<algebraic_datatype_decl>,
+		boost::recursive_wrapper<type_synonym_decl>,
 		std::string
 	>;
 	
 	struct base_expr {
 		std::vector<base_expr_node> children;
+	};
+
+	struct module_decl {
+		std::string module_id;
+		std::vector<base_expr_node> body;
+	};
+
+	struct algebraic_datatype_decl {
+		std::string type_ctor;                         // Type constructor
+		std::string value_ctor;                        // Value constructor
+		std::vector<std::string> components;           // Value/Data constructors
+		std::vector<std::string> deriving_typeclasses;
+	};
+
+	struct type_synonym_decl {
+		std::string type_new;
+		std::string type_old;
 	};
 
 	//struct data_type

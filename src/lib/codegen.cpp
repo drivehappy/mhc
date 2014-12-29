@@ -81,6 +81,18 @@ Value* ast_codegen::operator()(const parser::base_expr& expr) {
 	return nullptr;
 }
 
+Value* ast_codegen::operator()(const parser::algebraic_datatype_decl& decl) {
+	return nullptr;
+}
+
+Value* ast_codegen::operator()(const parser::module_decl& decl) {
+	return nullptr;
+}
+
+Value* ast_codegen::operator()(const parser::type_synonym_decl& decl) {
+	return nullptr;
+}
+
 #if 0
 Value* ast_codegen::operator()(const parser::func_expr& func) {
 	//cerr << "Generating code for Function \"" << func.functionName << "\"" << endl;

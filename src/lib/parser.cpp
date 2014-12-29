@@ -34,6 +34,25 @@ BOOST_FUSION_ADAPT_STRUCT(
 	(std::vector<parser::base_expr_node>, children)
 )
 
+BOOST_FUSION_ADAPT_STRUCT(
+	parser::module_decl,
+	(std::string, module_id)
+	(std::vector<parser::base_expr_node>, body)
+)
+
+BOOST_FUSION_ADAPT_STRUCT(
+	parser::algebraic_datatype_decl,
+	(std::string, type_ctor)
+	(std::vector<std::string>, components)
+	(std::vector<std::string>, deriving_typeclasses)
+)
+
+BOOST_FUSION_ADAPT_STRUCT(
+	parser::type_synonym_decl,
+	(std::string, type_new)
+	(std::string, type_old)
+)
+
 /*
 // Old Marklar rules
 BOOST_FUSION_ADAPT_STRUCT(
@@ -192,6 +211,10 @@ namespace parser {
 	{
 		mhc_grammar() : mhc_grammar::base_type(start)
 		{
+			using namespace qi::labels;
+			using phoenix::at_c;
+			using phoenix::push_back;
+
 			start %= program;
 
 			// Haskell Report Chapter2: This is the lexical structure,
@@ -247,7 +270,8 @@ namespace parser {
 				>> qi::lexeme[(qi::char_("a-z_") >> *qi::char_("a-z_A-Z0-9'"))];
 
 			conid %=
-				   qi::char_("A-Z") >> *qi::char_("a-zA-Z0-9'");
+				   (!reservedid)
+				>> qi::lexeme[(qi::char_("A-Z") >> *qi::char_("a-zA-Z0-9'"))];
 
 			reservedid %=
 				   reservedid_symbols
@@ -357,9 +381,16 @@ namespace parser {
 				>> qi::eoi
 				;
 
-			module %=
-				  ("module" >> modid >> /* TODO: -(exports) >> */ "where" >> body)
-				| body;
+			module =
+				  (
+				       "module"
+				    >> modid      [at_c<0>(_val) = _1]
+					>> /* TODO: -(exports) >> */
+					   "where"
+					>> body       [at_c<1>(_val) = _1]
+				  )
+				| body            [at_c<1>(_val) = _1]
+				;
 
 			body %=
 				  /* TODO: '{' >> impdecls >> ';' >> topdecls >> '}' >>*/  // ch5: Modules
@@ -370,10 +401,24 @@ namespace parser {
 				  topdecl % ';';
 
 			topdecl %=
-				  ("type" >> simpletype >> "=" >> type)
-				| ("data" >> /* TODO: -(context >> "=>") >>*/ simpletype >> -('=' >> constrs) >> -(deriving))
-				| ("class" >> /* TODO: -(scontext >> "=>") >>*/ tycls >> tyvar >> -("where" >> cdecls))
-				| decl;
+				  topdecl_typesynonym
+				| topdecl_data
+			//	| ("class" >> /* TODO: -(scontext >> "=>") >>*/ tycls >> tyvar >> -("where" >> cdecls))
+			//	| decl
+				;
+
+			// Algebraic Datatype Decls
+			topdecl_typesynonym %=
+				("type" >> simpletype >> "=" >> type);
+
+			topdecl_data %=
+				(
+				     "data"
+				  >> /* TODO: -(context >> "=>") >>*/ simpletype
+				  >> -('=' >> constrs)
+				  >> -(deriving)
+				);
+				//("data" >> simpletype);
 
 			decls %=
 				  //("{" >> (decl % ';') >> "}");
@@ -436,7 +481,8 @@ namespace parser {
 			// TODO
 			constrs %= (constr % '|');
 			constr %=
-				  con  >> -(qi::lit('!')) >> *atype >> -(qi::lit('!')) >> -(atype)
+				  //con >> -(qi::lit('!')) >> *atype >> -(qi::lit('!')) >> -(atype)
+				  con >> *(-(qi::lit('!')) >> atype);
 				;
 				//| (btype | (qi::lit('!') >> atype)) >> conop >> (btype | (qi::lit('!') >> atype))
 				//| con >> *(fielddecl);
@@ -455,23 +501,6 @@ namespace parser {
 				  tycon >> *tyvar;
 
 			// Debugging
-			/*
-			BOOST_SPIRIT_DEBUG_NODE(deriving);
-			BOOST_SPIRIT_DEBUG_NODE(dclass);
-			BOOST_SPIRIT_DEBUG_NODE(qtycls);
-			BOOST_SPIRIT_DEBUG_NODE(tycls);
-			BOOST_SPIRIT_DEBUG_NODE(modid);
-			BOOST_SPIRIT_DEBUG_NODE(conid);
-			BOOST_SPIRIT_DEBUG_NODE(conid_noskip);
-			BOOST_SPIRIT_DEBUG_NODE(qtycls);
-			BOOST_SPIRIT_DEBUG_NODE(atype);
-			BOOST_SPIRIT_DEBUG_NODE(constr);
-			BOOST_SPIRIT_DEBUG_NODE(conid);
-			BOOST_SPIRIT_DEBUG_NODE(con);
-			BOOST_SPIRIT_DEBUG_NODE(btype);
-			BOOST_SPIRIT_DEBUG_NODE(type);
-			*/
-
 			/*
 			BOOST_SPIRIT_DEBUG_NODE(start);
 			BOOST_SPIRIT_DEBUG_NODE(program);
@@ -563,15 +592,19 @@ namespace parser {
 		qi::rule<Iterator, string(),			skipper<Iterator>> string__;
 		qi::rule<Iterator, string(),			skipper<Iterator>> escape;
 
-		qi::rule<Iterator, string(),			skipper<Iterator>> module;
-		qi::rule<Iterator, string(),			skipper<Iterator>> body;
-		qi::rule<Iterator, string(),			skipper<Iterator>> topdecls;
-		qi::rule<Iterator, string(),			skipper<Iterator>> topdecl;
-		qi::rule<Iterator, string(),			skipper<Iterator>> decls;
-		qi::rule<Iterator, string(),			skipper<Iterator>> decl;
-		qi::rule<Iterator, string(),			skipper<Iterator>> cdecls;
-		qi::rule<Iterator, string(),			skipper<Iterator>> cdecl;
-		qi::rule<Iterator, string(),			skipper<Iterator>> gendecl;
+		qi::rule<Iterator, module_decl(),				skipper<Iterator>> module;
+		//qi::rule<Iterator, string(),					skipper<Iterator>> body;
+		qi::rule<Iterator, vector<base_expr_node>(),					skipper<Iterator>> body;
+		//qi::rule<Iterator, string(),					skipper<Iterator>> topdecls;
+		qi::rule<Iterator, vector<base_expr_node>(),					skipper<Iterator>> topdecls;
+		qi::rule<Iterator, base_expr_node(),			skipper<Iterator>> topdecl;
+		qi::rule<Iterator, type_synonym_decl(),			skipper<Iterator>> topdecl_typesynonym;
+		qi::rule<Iterator, algebraic_datatype_decl(),	skipper<Iterator>> topdecl_data;
+		qi::rule<Iterator, string(),					skipper<Iterator>> decls;
+		qi::rule<Iterator, string(),					skipper<Iterator>> decl;
+		qi::rule<Iterator, string(),					skipper<Iterator>> cdecls;
+		qi::rule<Iterator, string(),					skipper<Iterator>> cdecl;
+		qi::rule<Iterator, string(),					skipper<Iterator>> gendecl;
 
 		qi::rule<Iterator, string(),			skipper<Iterator>> ops;
 		qi::rule<Iterator, string(),			skipper<Iterator>> vars;
@@ -591,10 +624,10 @@ namespace parser {
 		qi::rule<Iterator, string(),			skipper<Iterator>> atype;
 		qi::rule<Iterator, string(),			skipper<Iterator>> gtycon;
 
-		qi::rule<Iterator, string(),			skipper<Iterator>> constrs;
-		qi::rule<Iterator, string(),			skipper<Iterator>> constr;
+		qi::rule<Iterator, vector<string>(),	skipper<Iterator>> constrs;
+		qi::rule<Iterator, vector<string>(),	skipper<Iterator>> constr;
 		qi::rule<Iterator, string(),			skipper<Iterator>> fielddecl;
-		qi::rule<Iterator, string(),			skipper<Iterator>> deriving;
+		qi::rule<Iterator, vector<string>(),	skipper<Iterator>> deriving;
 		qi::rule<Iterator, string(),			skipper<Iterator>> dclass;
 
 		// CH 4.2.1 Algebraic Datatype

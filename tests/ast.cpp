@@ -13,6 +13,49 @@ using namespace parser;
 using namespace std;
 
 
+// Debugging helper visitor
+#include <iostream>
+using namespace std;
+
+class ast_helper : public boost::static_visitor<void> {
+public:
+	ast_helper() {}
+	ast_helper(int indentLevel) : mIndentLevel(indentLevel), mIndentString(mIndentLevel, ' ') {}
+
+
+	void operator()(const parser::base_expr& expr) {
+		cout << mIndentString << "AST Base" << endl;
+	}
+	void operator()(const parser::algebraic_datatype_decl& decl) {
+		cout << mIndentString << "AST Algebraic Datatype Decl: " << decl.type_ctor << endl;
+
+		for (auto itr : decl.components) {
+			cout << mIndentString << " ADT Component Type: " << itr << endl;
+		}
+		for (auto itr : decl.deriving_typeclasses) {
+			cout << mIndentString << " ADT Deriving Type: " << itr << endl;
+		}
+	}
+	void operator()(const parser::module_decl& decl) {
+		cout << mIndentString << "AST Module Decl: " << decl.module_id << endl;
+
+		for (auto itr : decl.body) {
+			ast_helper astHelper(mIndentLevel + 1);
+			boost::apply_visitor(astHelper, itr);
+		}
+	}
+	void operator()(const parser::type_synonym_decl& decl) {
+		cout << mIndentString << "AST Type Synonym Decl" << endl;
+	}
+	void operator()(const std::string& str) {
+		cout << mIndentString << "AST String: " << str << endl;
+	}
+
+private:
+	int mIndentLevel = 0;
+	string mIndentString;
+};
+
 
 TEST(ASTTest, DataType) {
 	// Taken from Real World Haskell, Ch. 3
@@ -25,13 +68,21 @@ TEST(ASTTest, DataType) {
 
 	const auto expr = boost::get<base_expr>(&root);
 	EXPECT_TRUE(expr != nullptr);
-
-	// We expect to have our func_expr in this root node
 	EXPECT_EQ(1, expr->children.size());
+
+	// Debug
+	for (auto e : expr->children) {
+		ast_helper astDebug;
+		boost::apply_visitor(astDebug, e);
+	}
+
+	/*
+	// We expect to have our func_expr in this root node
 	const auto exprF = boost::get<string>(&expr->children[0]);
 	EXPECT_TRUE(exprF != nullptr);
 
 	EXPECT_EQ("", *exprF);
+	*/
 }
 
 

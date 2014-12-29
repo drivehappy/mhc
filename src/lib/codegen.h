@@ -25,6 +25,9 @@ namespace mhc {
 
 
 		llvm::Value* operator()(const parser::base_expr& expr);
+		llvm::Value* operator()(const parser::algebraic_datatype_decl& decl);
+		llvm::Value* operator()(const parser::module_decl& decl);
+		llvm::Value* operator()(const parser::type_synonym_decl& decl);
 		llvm::Value* operator()(const std::string& expr);
 		/*
 		llvm::Value* operator()(const parser::func_expr& expr);
