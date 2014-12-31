@@ -370,9 +370,75 @@ namespace parser {
 	
 
 			// Haskell Report Chapter3: Expressions
+			alts %= (alt % ';');
+
+			alt %=
+				  pat >> "->" >> exp_ >> -(qi::lit("where") >> decls)
+				| pat >> gdpat >> -(qi::lit("where") >> decls)
+				/* TODO: Empty Alternative*/
+				;
+
+			gdpat %= guards >> "->" >> exp_ >> -(gdpat);
+
+			stmts %= *stmt >> exp_ >> -(qi::lit('-'));
+
+			stmt %=
+				  exp_ >> ';'
+				| pat >> "<-" >> exp_ >> ';'
+				| "let" >> decls >> ';'
+				| ';'
+				;
+
+			fbind %= qvar >> '=' >> exp_;
+
+			pat %=
+				  lpat >> qconop >> pat
+				| lpat;
+
+			lpat %=
+				  apat
+				| (qi::char_('-') >>
+				   (
+				      integer
+				    | float_
+				   ))
+				| (qcon >> *apat);
+
+			apat %=
+				  var >> -(qi::lit('@') >> apat)
+				| gcon
+				| qcon >> '{' >> (fpat % ',') >> '}'
+				| literal
+				| qi::lit('_')
+				| '(' >> pat >> ')'
+				| '(' >> (pat % ',') >> ')'
+				| '[' >> (pat % ',') >> ']'
+				| '~' >> apat
+				;
+				
+
+			fpat %= qvar >> qi::char_('=') >> pat;
+
+			gcon %=
+				  qi::lit("()")
+				| ("[]")
+				| (qi::lit('(') >> ',' >> *(qi::lit(',')) >> ')')
+				| qcon
+				;
+
 			var %= varid; /* TODO: | varsym*/
 
+			qvar %=
+				  varid
+				| (qi::char_('(') >> varsym >> qi::char_(')'))
+				;
+
 			con %= conid; /* TODO: | consym*/
+
+			qcon %=
+				  qconid
+				| (qi::char_('(') >> gconsym >> qi::char_(')'))
+				;
 
 			// Haskell Report Chapter4: Declarations and Bindings
 			program %=
@@ -404,7 +470,7 @@ namespace parser {
 				  topdecl_typesynonym
 				| topdecl_data
 			//	| ("class" >> /* TODO: -(scontext >> "=>") >>*/ tycls >> tyvar >> -("where" >> cdecls))
-			//	| decl
+				| decl
 				;
 
 			// Algebraic Datatype Decls
@@ -425,20 +491,82 @@ namespace parser {
 				  (decl % ';');
 
 			decl %=
-				  gendecl;
-				/* TODO: | (funlhs | var) rhs*/
+				  gendecl
+				| ((funlhs | pat) >> rhs);
 
 			cdecls %=
 				  ("{" >> (cdecl % ';') >> "}");
 
 			cdecl %=
-				  gendecl;
-				/* TODO: | (funlhs | var) rhs*/
+				  gendecl
+				| ((funlhs | var) >> rhs)
+				;
 
 			gendecl %=
 				  (vars >> "::" >> /* TODO: -(context >> "=>") >>"*/ type)
 				| (fixity >> -integer >> ops);
 				/* TODO: Empty decl, unsure how to handle this */
+
+
+			//
+			funlhs %=
+				  var >> apat >> *apat
+				| pat >> varop >> pat
+				//| (qi::char_('(') >> funlhs >> qi::char_(')') >> apat >> *apat)
+				| apat >> *apat
+				;
+
+			rhs %=
+				  qi::char_('=') >> exp_ >> -("where" >> decls)
+				| gdrhs >> -("where" >> decls);
+
+			gdrhs %=
+				  guards >> qi::lit('=') >> exp_ >> -(gdrhs);
+
+			guards %=
+				  qi::lit('|') >> *guard;
+
+			guard %=
+				  pat >> "<-" >> infixexp
+				| "let" >> decls
+				| infixexp;
+
+			exp_ %=
+				  infixexp >> "::" >> /*TODO: -(context >> "=>")*/ type
+				| infixexp;
+
+			infixexp %=
+				  lexp >> qop >> infixexp
+				| qi::lit('-') >> infixexp
+				| lexp;
+
+			lexp %=
+				  (qi::lit('\\') >> +apat >> "->" >> exp_)
+				| ("let" >> decls >> "in" >> exp_)
+				| ("if" >> exp_ >> -(qi::lit(';')) >> "then" >> exp_ >> -(qi::lit(';')) >> "else" >> exp_)
+				| ("case" >> exp_ >> "of" >> *alts)
+				| ("do" >> *stmts)
+				| fexp
+				;
+
+			fexp %=
+				  /* TODO: -(fexp) >>*/
+				  aexp;
+
+			aexp %=
+				  qvar
+				| gcon
+				| literal
+				| (qi::lit('(') >> exp_ >> ')')
+				| (qi::lit('(') >> exp_ >> +exp_ >> ')')
+				| (qi::lit('[') >> +exp_ >> ']')
+				| (qi::lit('[') >> exp_ >> -(',' >> exp_) >> ".." >> -(exp_))
+				| (qi::lit('[') >> exp_ >> '|' >> +qval >> ']')
+				| (qi::lit('(') >> infixexp >> qop >> ')')
+				| (qi::lit('(') >> (qop - '-') >> infixexp >> ')')
+				| (qcon >> '{' >> *fbind >> '}')
+				| ((aexp - qcon) >> '{' >> +fbind >> '}')
+				;
 
 			varop %=
 				  varsym
@@ -448,7 +576,15 @@ namespace parser {
 				  consym
 				| ("`" >> conid  >> "`");
 
+			qconop %=
+				  gconsym
+				| (qi::char_('`') >> qconid >> qi::char_('`'));
+
 			op %= varop | conop;
+
+			qop %=
+				  qvarop
+				| qconop;
 
 			ops %= (op % ',');
 			vars %= (var % ',');
@@ -501,6 +637,14 @@ namespace parser {
 				  tycon >> *tyvar;
 
 			// Debugging
+			BOOST_SPIRIT_DEBUG_NODE(topdecl);
+			BOOST_SPIRIT_DEBUG_NODE(decl);
+			BOOST_SPIRIT_DEBUG_NODE(funlhs);
+			BOOST_SPIRIT_DEBUG_NODE(pat);
+			BOOST_SPIRIT_DEBUG_NODE(var);
+			BOOST_SPIRIT_DEBUG_NODE(apat);
+			BOOST_SPIRIT_DEBUG_NODE(rhs);
+
 			/*
 			BOOST_SPIRIT_DEBUG_NODE(start);
 			BOOST_SPIRIT_DEBUG_NODE(program);
@@ -593,10 +737,8 @@ namespace parser {
 		qi::rule<Iterator, string(),			skipper<Iterator>> escape;
 
 		qi::rule<Iterator, module_decl(),				skipper<Iterator>> module;
-		//qi::rule<Iterator, string(),					skipper<Iterator>> body;
-		qi::rule<Iterator, vector<base_expr_node>(),					skipper<Iterator>> body;
-		//qi::rule<Iterator, string(),					skipper<Iterator>> topdecls;
-		qi::rule<Iterator, vector<base_expr_node>(),					skipper<Iterator>> topdecls;
+		qi::rule<Iterator, vector<base_expr_node>(),	skipper<Iterator>> body;
+		qi::rule<Iterator, vector<base_expr_node>(),	skipper<Iterator>> topdecls;
 		qi::rule<Iterator, base_expr_node(),			skipper<Iterator>> topdecl;
 		qi::rule<Iterator, type_synonym_decl(),			skipper<Iterator>> topdecl_typesynonym;
 		qi::rule<Iterator, algebraic_datatype_decl(),	skipper<Iterator>> topdecl_data;
@@ -606,16 +748,45 @@ namespace parser {
 		qi::rule<Iterator, string(),					skipper<Iterator>> cdecl;
 		qi::rule<Iterator, string(),					skipper<Iterator>> gendecl;
 
+		qi::rule<Iterator, string(),					skipper<Iterator>> funlhs;
+		qi::rule<Iterator, string(),					skipper<Iterator>> rhs;
+		qi::rule<Iterator, string(),					skipper<Iterator>> gdrhs;
+		qi::rule<Iterator, string(),					skipper<Iterator>> guards;
+		qi::rule<Iterator, string(),					skipper<Iterator>> guard;
+		qi::rule<Iterator, string(),					skipper<Iterator>> exp_;
+		qi::rule<Iterator, string(),					skipper<Iterator>> infixexp;
+		qi::rule<Iterator, string(),					skipper<Iterator>> lexp;
+		qi::rule<Iterator, string(),					skipper<Iterator>> fexp;
+		qi::rule<Iterator, string(),					skipper<Iterator>> aexp;
+
 		qi::rule<Iterator, string(),			skipper<Iterator>> ops;
 		qi::rule<Iterator, string(),			skipper<Iterator>> vars;
 		qi::rule<Iterator, string(),			skipper<Iterator>> fixity;
 
 		// CH 3: Expressions
+		qi::rule<Iterator, string(),			skipper<Iterator>> qval;
+		qi::rule<Iterator, string(),			skipper<Iterator>> alts;
+		qi::rule<Iterator, string(),			skipper<Iterator>> alt;
+		qi::rule<Iterator, string(),			skipper<Iterator>> gdpat;
+		qi::rule<Iterator, string(),			skipper<Iterator>> stmts;
+		qi::rule<Iterator, string(),			skipper<Iterator>> stmt;
+		qi::rule<Iterator, string(),			skipper<Iterator>> fbind;
+		qi::rule<Iterator, string(),			skipper<Iterator>> pat;
+		qi::rule<Iterator, string(),			skipper<Iterator>> lpat;
+		qi::rule<Iterator, string(),			skipper<Iterator>> apat;
+		qi::rule<Iterator, string(),			skipper<Iterator>> fpat;
+		qi::rule<Iterator, string(),			skipper<Iterator>> gcon;
 		qi::rule<Iterator, string(),			skipper<Iterator>> var;
+		qi::rule<Iterator, string(),			skipper<Iterator>> qvar;
 		qi::rule<Iterator, string(),			skipper<Iterator>> varop;
+		qi::rule<Iterator, string(),			skipper<Iterator>> qvarop;
 		qi::rule<Iterator, string(),			skipper<Iterator>> conop;
+		qi::rule<Iterator, string(),			skipper<Iterator>> qconop;
 		qi::rule<Iterator, string(),			skipper<Iterator>> op;
+		qi::rule<Iterator, string(),			skipper<Iterator>> qop;
+		qi::rule<Iterator, string(),			skipper<Iterator>> gconsym;
 		qi::rule<Iterator, string(),			skipper<Iterator>> con;
+		qi::rule<Iterator, string(),			skipper<Iterator>> qcon;
 
 		// CH 4.1.2 Syntax of Types
 		qi::rule<Iterator, string(),			skipper<Iterator>> type;

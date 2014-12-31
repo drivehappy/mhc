@@ -60,7 +60,7 @@ private:
 
 
 
-TEST(ASTTest, DataType) {
+TEST(ASTTest, DataType_Basic) {
 	// Taken from Real World Haskell, Ch. 3
 	const auto input =
 		"data BookInfo = Book Int String [String]"
@@ -95,5 +95,35 @@ TEST(ASTTest, DataType) {
 		boost::apply_visitor(astDebug, e);
 	}
 	*/
+}
+
+TEST(ASTTest, DataType_NewValue) {
+	// Taken from Real World Haskell, Ch. 3
+	const auto input =
+		//"myInfo = Book 1234 \"Algebra of Programming\""
+		//"         [\"Richard Bird\", \"Oege de Moor\"]";
+		"myInfo = Book";
+
+	base_expr_node root;
+	EXPECT_TRUE(parse(input, root));
+
+	const auto expr = boost::get<base_expr>(&root);
+	EXPECT_TRUE(expr != nullptr);
+	EXPECT_EQ(1, expr->children.size());
+
+	const auto module = boost::get<module_decl>(&expr->children[0]);
+	EXPECT_TRUE(module != nullptr);
+	EXPECT_EQ(1, module->body.size());
+
+	const auto adt = boost::get<algebraic_datatype_decl>(&module->body[0]);
+	EXPECT_TRUE(adt != nullptr);
+
+	EXPECT_EQ("BookInfo", adt->type_ctor);
+	EXPECT_EQ("Book",     adt->components[0]);
+	EXPECT_EQ("Int",      adt->components[1]);
+	EXPECT_EQ("String",   adt->components[2]);
+	EXPECT_EQ("[String]", adt->components[3]);
+	EXPECT_EQ("Show",     adt->deriving_typeclasses[0]);
+	EXPECT_EQ("Test",     adt->deriving_typeclasses[1]);
 }
 
